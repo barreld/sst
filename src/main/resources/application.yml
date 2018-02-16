@@ -6,8 +6,6 @@ security:
 
 github:
   client:
-    clientId: 1adba012f87f1b853615
-    clientSecret: 6a15a03b62d5a8cf51a27c7be7af0172b587f033
     accessTokenUri: https://github.com/login/oauth/access_token
     userAuthorizationUri: https://github.com/login/oauth/authorize
     clientAuthenticationScheme: form
@@ -17,3 +15,6 @@ github:
 
 contracts:
   url: https://api.github.com/repos/barreld/contracts/contents
+
+pulls:
+  url: https://api.github.com/repos/barreld/contracts/pulls

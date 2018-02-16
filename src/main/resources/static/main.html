@@ -7,27 +7,63 @@
     <meta name="description" content=""/>
     <meta name="viewport" content="width=device-width"/>
     <base href="/"/>
-    <link rel="stylesheet" type="text/css"
-          href="/webjars/bootstrap/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
     <script type="text/javascript" src="/webjars/jquery/jquery.min.js"></script>
-    <script type="text/javascript"
-            src="/webjars/bootstrap/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
+
 <body>
-<h1>SST</h1>
-<div class="container authenticated">
-    Logged in as: <span id="user"></span>
-    <div>
-        <button onClick="logout()" class="btn btn-primary">Logout</button>
+<nav class="light-blue lighten-1" role="navigation">
+    <div class="nav-wrapper container">
+        <span id="logo-container" class="brand-logo">
+            Logged in as: <span id="user"></span>
+        </span>
+        <ul class="right hide-on-med-and-down">
+            <li><a href="javascript:logout();">Logout</a></li>
+        </ul>
     </div>
-    <div>
-        <select onchange="select()">
-        </select>
+</nav>
+<div class="section no-pad-bot" id="index-banner">
+    <div class="container">
+        <br><br>
+        <h1 class="header center orange-text">Contract Viewer</h1>
+        <div class="row center">
+            <h5 class="header col s12 light">Please select a microservice</h5>
+        </div>
+        <div class="row center">
+            <div class="col s4"></div>
+            <select id="contractList" class="col s4">
+                <option disabled selected value> -- select a microservice --</option>
+            </select>
+            <div class="col s4"></div>
+        </div>
+        <div class="row center">
+            <div class="col s4"></div>
+            <select id="versionList" class="col s4">
+            </select>
+            <div class="col s4"></div>
+        </div>
+        <br><br>
     </div>
-    <div>
-        <button onclick="go()">GO</button>
+    <div class="container">
+        <div class="section">
+            <div class="row">
+                <div class="col s9">
+                    <h5 class="header light">Contract</h5>
+                    <pre id="contractText"></pre>
+                </div>
+                <div class="col s3">
+                    <h5 class="header light">Proposed Changes</h5>
+                    <table id="changes" class="striped"></table>
+                </div>
+            </div>
+            <br><br>
+        </div>
     </div>
 </div>
+</body>
+
 <script type="text/javascript" src="/webjars/js-cookie/js.cookie.js"></script>
 <script type="text/javascript">
           $.get("/status", function(data) {
@@ -42,9 +78,54 @@
           }
           var go = function() {
               $.get("/contracts", function(data) {
-                console.log(data);
+                $.each(data, function(key, value) {
+                    $("#contractList").append("<option url= '" + value.url + "' >" + value.name + "</option>");
+                });
+                $('select').material_select();
               })
           }
+          $(function() {
+                $("#contractList").change(function() {
+                    $("#versionList").html('');
+                    $("#versionList").append("<option disabled selected value> -- select a version -- </option>")
+                    var element = $(this).find('option:selected');
+                    var url = element.attr("url");
+
+                    $.get("/contractList", { url })
+                        .done(function(data) {
+                            $.each(data.contracts, function(key, value) {
+                                var badge = 'images/unpublished.png';
+                                if (value.published == true) {
+                                     badge = 'images/published.png';
+                                }
+                                $("#versionList").append("<option data-icon=" + badge + " class='circle' downloadUrl= '" + value.downloadUrl + "' >" + value.version + "</option>");
+                            });
+                            $('select').material_select();
+                        });
+                });
+            });
+            $(function() {
+                $("#versionList").change(function() {
+                    var element = $(this).find('option:selected');
+                    var downloadUrl = element.attr("downloadUrl");
+
+                    $.get("/contractText", { downloadUrl })
+                        .done(function(data) {
+                            $("#contractText").html(data);
+                        });
+                    var fileName = $("#contractList").val() + "/" + $("#versionList").val();
+                    $.get("/changes", { fileName })
+                        .done(function(data) {
+                           $("#changes").html('<thead><tr><th>User</th><th>Change</th></tr></thead>');
+                           $.each(data, function(key, value) {
+                               $("#changes").append("<tr><td><img height='42' width='42' src=" + value.userPic + "/> " + value.user + "</td><td>" + value.description + "</td></tr>");
+                           });
+                        });
+                });
+            });
+          $(document).ready(function() {
+              go();
+          });
+
 </script>
-</body>
 </html>

@@ -1,5 +1,6 @@
 package com.dan.test.services;
 
+import com.dan.test.domain.AvailableContract;
 import com.dan.test.domain.Contract;
 import com.dan.test.domain.ContractList;
 import com.dan.test.domain.GitContent;
@@ -8,9 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,35 +29,35 @@ public class ContractService {
         return gitService.getFile(downloadUrl, accessToken);
     }
 
-    public List<ContractList> getAllContracts(String accessToken) {
+    public List<AvailableContract> getAvailableMicroserviceContracts(String accessToken) {
         List<GitContent> directories = gitService.getContent(contractsUrl, accessToken);
         log.info("{}", directories);
 
-        Map<String, List<GitContent>> contractDirectories = new HashMap<>();
-
-        for (GitContent directory : directories) {
-            if ("dir".equals(directory.getType())) {
-                contractDirectories.put(directory.getName(), gitService.getContent(directory.getUrl(), accessToken));
-            }
-        }
-
-        return contractDirectories
-                .entrySet()
+        return directories
                 .stream()
-                .map(cd -> ContractList
-                        .builder()
-                        .name(cd.getKey())
-                        .contracts(cd.getValue()
-                                .stream()
-                                .map(gc -> Contract
-                                        .builder()
-                                        .version(extractVersion(gc.getName()))
-                                        .published(isPublished(gc.getName()))
-                                        .downloadUrl(gc.getDownload_url())
-                                        .build())
-                                .collect(Collectors.toList()))
-                        .build())
+                .filter(d -> "dir".equals(d.getType()))
+                .map(d -> new AvailableContract(d.getName(), d.getUrl()))
                 .collect(Collectors.toList());
+    }
+
+    public ContractList getContractList(String accessToken, String url) {
+        List<GitContent> contracts = gitService.getContent(url, accessToken);
+
+        ContractList contractList = new ContractList();
+        contractList.setName(contracts.get(0).getName());
+
+        contractList.setContracts(
+                contracts
+                        .stream()
+                        .map(c -> Contract
+                                .builder()
+                                .version(extractVersion(c.getName()))
+                                .published(isPublished(c.getName()))
+                                .downloadUrl(c.getDownload_url())
+                                .build())
+                        .collect(Collectors.toList()));
+
+        return contractList;
     }
 
     private String extractVersion(String name) {

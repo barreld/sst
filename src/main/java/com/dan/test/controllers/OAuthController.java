@@ -1,8 +1,11 @@
 package com.dan.test.controllers;
 
+import com.dan.test.domain.AvailableContract;
 import com.dan.test.domain.ClientResources;
 import com.dan.test.domain.ContractList;
+import com.dan.test.domain.FileChange;
 import com.dan.test.services.ContractService;
+import com.dan.test.services.PullRequestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.UserInfoTokenServices;
 import org.springframework.core.annotation.Order;
@@ -20,6 +23,7 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.filter.CompositeFilter;
 
@@ -34,12 +38,14 @@ import java.util.Map;
 public class OAuthController extends WebSecurityConfigurerAdapter {
 
     private ContractService contractService;
+    private PullRequestService pullRequestService;
     private OAuth2ClientContext oauth2ClientContext;
     private ClientResources github;
 
     @Autowired
-    public OAuthController(ContractService contractService, OAuth2ClientContext oauth2ClientContext, ClientResources github) {
+    public OAuthController(ContractService contractService, PullRequestService pullRequestService, OAuth2ClientContext oauth2ClientContext, ClientResources github) {
         this.contractService = contractService;
+        this.pullRequestService = pullRequestService;
         this.oauth2ClientContext = oauth2ClientContext;
         this.github = github;
     }
@@ -87,7 +93,25 @@ public class OAuthController extends WebSecurityConfigurerAdapter {
 
     @GetMapping("/contracts")
     @ResponseBody
-    public List<ContractList> getContracts(OAuth2Authentication user) {
-        return contractService.getAllContracts(((OAuth2AuthenticationDetails) user.getDetails()).getTokenValue());
+    public List<AvailableContract> getContracts(OAuth2Authentication user) {
+        return contractService.getAvailableMicroserviceContracts(((OAuth2AuthenticationDetails) user.getDetails()).getTokenValue());
+    }
+
+    @GetMapping("/contractList")
+    @ResponseBody
+    public ContractList getContractList(OAuth2Authentication user, @RequestParam("url") String url) {
+        return contractService.getContractList(((OAuth2AuthenticationDetails) user.getDetails()).getTokenValue(), url);
+    }
+
+    @GetMapping("/contractText")
+    @ResponseBody
+    public String getContractText(OAuth2Authentication user, @RequestParam("downloadUrl") String downloadUrl) {
+        return contractService.getContractText(((OAuth2AuthenticationDetails) user.getDetails()).getTokenValue(), downloadUrl);
+    }
+
+    @GetMapping("/changes")
+    @ResponseBody
+    public List<FileChange> getChanges(OAuth2Authentication user, @RequestParam("fileName") String fileName) {
+        return pullRequestService.getFileChanges(((OAuth2AuthenticationDetails) user.getDetails()).getTokenValue(), fileName);
     }
 }
