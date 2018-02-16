@@ -8,10 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -26,6 +26,10 @@ public class ContractService {
         this.gitService = gitService;
     }
 
+    public String getContractText(String accessToken, String downloadUrl) {
+        return gitService.getFile(downloadUrl, accessToken);
+    }
+
     public List<ContractList> getAllContracts(String accessToken) {
         List<GitContent> directories = gitService.getContent(contractsUrl, accessToken);
         log.info("{}", directories);
@@ -38,30 +42,23 @@ public class ContractService {
             }
         }
 
-        List<ContractList> contractLists = new ArrayList<>();
-
-        for (Map.Entry<String, List<GitContent>> contractDirectory : contractDirectories.entrySet()) {
-            ContractList contractList = new ContractList();
-            contractList.setName(contractDirectory.getKey());
-
-            List<Contract> contracts = new ArrayList<>();
-            for (GitContent gitContract : contractDirectory.getValue()) {
-                Contract contract = new Contract();
-                contract.setVersion(extractVersion(gitContract.getName()));
-                contract.setPublished(isPublished(gitContract.getName()));
-
-                String file = gitService.getFile(gitContract.getDownload_url(), accessToken);
-                contract.setContent(file);
-
-                contracts.add(contract);
-            }
-
-            contractList.setContracts(contracts);
-
-            contractLists.add(contractList);
-        }
-
-        return contractLists;
+        return contractDirectories
+                .entrySet()
+                .stream()
+                .map(cd -> ContractList
+                        .builder()
+                        .name(cd.getKey())
+                        .contracts(cd.getValue()
+                                .stream()
+                                .map(gc -> Contract
+                                        .builder()
+                                        .version(extractVersion(gc.getName()))
+                                        .published(isPublished(gc.getName()))
+                                        .downloadUrl(gc.getDownload_url())
+                                        .build())
+                                .collect(Collectors.toList()))
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private String extractVersion(String name) {
